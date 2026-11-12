@@ -1,17 +1,170 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<title>Mi sitio - Alan Uriel</title>
-<link rel="stylesheet" href="estilo.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal · mi-sitio</title>
+<style>
+  :root{
+    --fondo:#f2f5f3; --tarjeta:#ffffff; --texto:#1b2a24; --suave:#5c6b64;
+    --verde:#1f6b52; --verde-osc:#165240; --borde:#d9e2dd; --error:#b3321f; --ok:#1f6b52;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fondo);color:var(--texto);line-height:1.5}
+  header{background:var(--verde);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{margin:0;font-size:1.15rem;font-weight:600}
+  main{max-width:640px;margin:24px auto;padding:0 16px}
+  .tarjeta{background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;padding:20px;margin-bottom:16px}
+  h2{margin:0 0 12px;font-size:1.05rem}
+  label{display:block;font-size:.9rem;margin:12px 0 4px;color:var(--suave)}
+  input{width:100%;padding:10px 12px;font:inherit;border:1px solid var(--borde);border-radius:8px;background:#fff;color:var(--texto)}
+  input:focus-visible,button:focus-visible{outline:3px solid #8fd0b8;outline-offset:1px}
+  .fila{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  button{font:inherit;padding:10px 16px;border-radius:8px;border:1px solid var(--verde);background:var(--verde);color:#fff;cursor:pointer}
+  button:hover{background:var(--verde-osc)}
+  button.sec{background:#fff;color:var(--verde)}
+  button.sec:hover{background:#eef5f1}
+  header button{background:transparent;border-color:#fff}
+  header button:hover{background:rgba(255,255,255,.15)}
+  .msg{margin-top:12px;font-size:.92rem;min-height:1.2em}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--error)}
+  ul{list-style:none;margin:0;padding:0}
+  li{padding:10px 0;border-top:1px solid var(--borde)}
+  li:first-child{border-top:0}
+  li small{display:block;color:var(--suave)}
+  .oculto{display:none}
+  .vacio{color:var(--suave)}
+</style>
 </head>
 <body>
-<nav>
-<a href="index.html">Inicio</a> ·
-<a href="catalogo.html">Catálogo</a> ·
-<a href="acerca.html">Acerca</a>
-</nav>
-<h1>Mi primer sitio web</h1>
-<p>Hola, soy Alan Resendiz. Esta es mi página de INICIO.</p>
+
+<header>
+  <h1>Portal</h1>
+  <div id="barra" class="oculto">
+    <span id="quien"></span>
+    <button class="sec" onclick="salir()" style="margin-left:10px">Cerrar sesión</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Pantalla de acceso (sin sesión) -->
+  <section id="login" class="tarjeta">
+    <h2>Inicia sesión o crea tu cuenta</h2>
+    <label for="email">Correo</label>
+    <input id="email" type="email" autocomplete="email" placeholder="alumno@ejemplo.com">
+    <label for="pass">Contraseña (mínimo 6 caracteres)</label>
+    <input id="pass" type="password" autocomplete="current-password">
+    <div class="fila">
+      <button onclick="entrar()">Iniciar sesión</button>
+      <button class="sec" onclick="registrar()">Crear cuenta</button>
+    </div>
+    <div id="m1" class="msg" role="status"></div>
+  </section>
+
+  <!-- Panel (solo con sesión) -->
+  <section id="app" class="oculto">
+    <div class="tarjeta">
+      <h2>Nueva solicitud</h2>
+      <label for="titulo">Título</label>
+      <input id="titulo" type="text" maxlength="120">
+      <label for="monto">Monto</label>
+      <input id="monto" type="number" min="0" step="0.01">
+      <div class="fila"><button onclick="crearSolicitud()">Guardar solicitud</button></div>
+      <div id="m2" class="msg" role="status"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Solicitudes</h2>
+      <ul id="lista"></ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- Librería de Supabase y tu configuración (debe definir el cliente como "supabase") -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+
+<script>
+  // ---------- utilidades ----------
+  function val(id){ return document.getElementById(id).value.trim(); }
+  function msg(id, texto, ok){
+    const el = document.getElementById(id);
+    el.textContent = texto;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+  function esc(s){
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- pantallas ----------
+  async function mostrarApp(){
+    const { data: { user } } = await supabase.auth.getUser();
+    document.getElementById('quien').textContent = user ? user.email : '';
+    document.getElementById('login').classList.add('oculto');
+    document.getElementById('app').classList.remove('oculto');
+    document.getElementById('barra').classList.remove('oculto');
+    cargarSolicitudes();
+  }
+  function mostrarLogin(){
+    document.getElementById('app').classList.add('oculto');
+    document.getElementById('barra').classList.add('oculto');
+    document.getElementById('login').classList.remove('oculto');
+    document.getElementById('pass').value = '';
+    document.getElementById('lista').innerHTML = '';
+  }
+
+  // ---------- Supabase Auth ----------
+  async function registrar(){
+    const { error } = await supabase.auth.signUp({ email: val('email'), password: document.getElementById('pass').value });
+    if (error) return msg('m1', 'Error: ' + error.message, false);
+    msg('m1', 'Cuenta creada. Ya puedes iniciar sesión.', true);
+  }
+
+  async function entrar(){
+    const { error } = await supabase.auth.signInWithPassword({ email: val('email'), password: document.getElementById('pass').value });
+    if (error) return msg('m1', 'Credenciales incorrectas', false);
+    mostrarApp();
+  }
+
+  async function salir(){
+    await supabase.auth.signOut();
+    mostrarLogin();
+  }
+
+  // ---------- solicitudes ----------
+  async function crearSolicitud(){
+    const titulo = val('titulo');
+    const monto = parseFloat(val('monto'));
+    if (!titulo || isNaN(monto)) return msg('m2', 'Escribe un título y un monto válido.', false);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('solicitudes').insert({ titulo, monto, usuario_email: user.email });
+    if (error) return msg('m2', 'No se pudo guardar: ' + error.message, false);
+
+    document.getElementById('titulo').value = '';
+    document.getElementById('monto').value = '';
+    msg('m2', 'Solicitud guardada.', true);
+    cargarSolicitudes();
+  }
+
+  async function cargarSolicitudes(){
+    const ul = document.getElementById('lista');
+    const { data, error } = await supabase.from('solicitudes').select('*').order('id', { ascending: false });
+    if (error){ ul.innerHTML = '<li class="vacio">No se pudieron cargar: ' + esc(error.message) + '</li>'; return; }
+    if (!data.length){ ul.innerHTML = '<li class="vacio">Aún no hay solicitudes. Crea la primera arriba.</li>'; return; }
+    ul.innerHTML = data.map(s =>
+      '<li><strong>' + esc(s.titulo) + '</strong> · $' + esc(s.monto) +
+      '<small>' + esc(s.usuario_email) + '</small></li>'
+    ).join('');
+  }
+
+  // ---------- al cargar la página: si hay sesión, entra directo ----------
+  (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) mostrarApp();
+  })();
+</script>
 </body>
 </html>
