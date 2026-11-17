@@ -114,7 +114,7 @@
 
 </main>
 
-<!-- Librería de Supabase y tu configuración (debe definir el cliente como "supabase") -->
+<!-- Librería de Supabase y tu configuración (debe definir el cliente como "sb") -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 
@@ -170,7 +170,7 @@
 
   // ---------- pantallas ----------
   async function mostrarApp(){
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
     document.getElementById('quien').textContent = user ? user.email : '';
     document.getElementById('login').classList.add('oculto');
     document.getElementById('app').classList.remove('oculto');
@@ -194,7 +194,7 @@
     if (password.length < 6) return msg('m1', 'La contraseña debe tener mínimo 6 caracteres.', false);
     if (password !== document.getElementById('pass2').value) return msg('m1', 'Las contraseñas no coinciden.', false);
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await sb.auth.signUp({ email, password });
     if (error) return msg('m1', 'Error: ' + traducir(error), false);
     // Supabase no da error si el correo ya existe; devuelve un usuario sin identidades
     if (data.user && data.user.identities && data.user.identities.length === 0)
@@ -207,13 +207,13 @@
   async function entrar(){
     const email = val('email'), password = document.getElementById('pass').value;
     if (!email || !password) return msg('m1', 'Escribe tu correo y contraseña.', false);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) return msg('m1', 'Credenciales incorrectas', false);
     mostrarApp();
   }
 
   async function salir(){
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     mostrarLogin();
   }
 
@@ -223,8 +223,8 @@
     const monto = parseFloat(val('monto'));
     if (!titulo || isNaN(monto)) return msg('m2', 'Escribe un título y un monto válido.', false);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('solicitudes').insert({ titulo, monto, usuario_email: user.email });
+    const { data: { user } } = await sb.auth.getUser();
+    const { error } = await sb.from('solicitudes').insert({ titulo, monto, usuario_email: user.email });
     if (error) return msg('m2', 'No se pudo guardar: ' + error.message, false);
 
     document.getElementById('titulo').value = '';
@@ -235,7 +235,7 @@
 
   async function cargarSolicitudes(){
     const ul = document.getElementById('lista');
-    const { data, error } = await supabase.from('solicitudes').select('*').order('id', { ascending: false });
+    const { data, error } = await sb.from('solicitudes').select('*').order('id', { ascending: false });
     if (error){ ul.innerHTML = '<li class="vacio">No se pudieron cargar: ' + esc(error.message) + '</li>'; return; }
     if (!data.length){ ul.innerHTML = '<li class="vacio">Aún no hay solicitudes. Crea la primera arriba.</li>'; return; }
     ul.innerHTML = data.map(s =>
@@ -246,7 +246,7 @@
 
   // ---------- al cargar: si hay sesión, entra directo ----------
   (async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await sb.auth.getSession();
     if (session) mostrarApp();
   })();
 </script>
