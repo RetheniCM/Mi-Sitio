@@ -133,7 +133,8 @@
     const m = (error.message || '').toLowerCase();
     if (m.includes('already registered')) return 'Ese correo ya tiene una cuenta. Inicia sesión.';
     if (m.includes('at least') || m.includes('weak')) return 'La contraseña es muy débil (mínimo 6 caracteres).';
-    if (m.includes('valid email') || m.includes('invalid')) return 'Escribe un correo válido.';
+    if (m.includes('api key')) return 'La clave de Supabase en supabase-config.js es incorrecta.';
+    if (m.includes('email') && (m.includes('invalid') || m.includes('valid email'))) return 'Supabase no aceptó ese correo. Usa un correo real (por ejemplo Gmail), no uno inventado.';
     if (m.includes('rate limit') || m.includes('too many')) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
     if (m.includes('fetch') || m.includes('network')) return 'Sin conexión con el servidor. Revisa tu internet.';
     return error.message;
